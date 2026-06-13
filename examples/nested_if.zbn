@@ -1,0 +1,10 @@
+shuru
+  ye hai age = 20;
+  ye hai score = 90;
+
+  agar (age >= 18) {
+    agar (score >= 80) {
+      likho "Eligible";
+    }
+  }
+khatam

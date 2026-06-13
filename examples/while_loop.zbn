@@ -1,0 +1,8 @@
+shuru
+  ye hai i = 0;
+
+  jab tak (i < 5) {
+    likho i;
+    i += 1;
+  }
+khatam
