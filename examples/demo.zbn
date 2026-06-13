@@ -1,0 +1,16 @@
+shuru
+  ye hai a = 3
+  ye hai b = 0
+
+  jab tak (b < 5) {
+    likho b
+
+    agar (b == a) {
+      likho "b barabar a hai"
+    } nahi to agar (b == 0) {
+      likho "b sifar hai"
+    }
+
+    b += 1
+  }
+khatam
