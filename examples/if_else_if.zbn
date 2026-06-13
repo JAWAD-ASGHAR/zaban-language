@@ -1,0 +1,13 @@
+shuru
+  ye hai score = 50;
+
+  agar (score >= 90) {
+    likho "A";
+  } nahi to agar (score >= 80) {
+    likho "B";
+  } nahi to agar (score >= 70) {
+    likho "C";
+  } nahi to {
+    likho "Fail";
+  }
+khatam

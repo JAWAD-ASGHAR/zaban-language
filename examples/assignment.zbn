@@ -1,0 +1,10 @@
+shuru
+  ye hai score = 10;
+
+  score += 5;
+  score -= 2;
+  score *= 3;
+  score /= 2;
+
+  likho score;
+khatam

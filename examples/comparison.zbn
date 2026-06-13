@@ -1,0 +1,9 @@
+shuru
+  ye hai a = 10;
+  ye hai b = 20;
+
+  likho a < b;
+  likho a > b;
+  likho a == b;
+  likho a != b;
+khatam

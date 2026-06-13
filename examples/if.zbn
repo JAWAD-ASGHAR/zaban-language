@@ -1,0 +1,7 @@
+shuru
+  ye hai age = 18;
+
+  agar (age >= 18) {
+    likho "Adult";
+  }
+khatam

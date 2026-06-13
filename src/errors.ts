@@ -12,6 +12,6 @@ export class ZabanError extends Error {
     this.name = "ZabanError";
   }
 }
-export function zabanError(message: string, line: number, column: number) {
+export function zabanError(message: string, line: number, column: number) : never {
   throw new ZabanError(message, line, column);
 }

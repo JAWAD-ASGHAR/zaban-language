@@ -1,0 +1,14 @@
+shuru
+  ye hai i = 0;
+
+  jab tak (i < 3) {
+    ye hai j = 0;
+
+    jab tak (j < 2) {
+      likho j;
+      j += 1;
+    }
+
+    i += 1;
+  }
+khatam
