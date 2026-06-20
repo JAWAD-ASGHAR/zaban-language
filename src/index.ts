@@ -1,6 +1,7 @@
 import fs from "fs";
 import { tokenize } from "./lexer.js";
 import { Parser } from "./parser.js";
+import { Interpreter } from "./interpreter.js";
 
 const filePath = process.argv[2];
 
@@ -22,3 +23,6 @@ const parser = new Parser(tokens);
 const program = parser.parse();
 
 console.log(JSON.stringify(program, null, 2));
+
+const interpreter = new Interpreter();
+interpreter.interpret(program);
