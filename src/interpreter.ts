@@ -74,7 +74,7 @@ export class Interpreter {
         return;
 
       case "PrintStmt":
-        console.log(this.stringify(this.evaluate(stmt.value)));
+        console.log(stmt.values.map(v => this.stringify(this.evaluate(v))).join(" "));
         return;
 
       case "ExprStmt":

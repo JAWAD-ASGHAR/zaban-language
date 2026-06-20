@@ -20,7 +20,6 @@ Code outside `shuru` … `khatam` is ignored when those markers are present. Wit
 | `=` / `+=` / `-=` | assign | `a = 5` or `b += 1` |
 | `agar` | if | `agar (x < 5) { ... }` |
 | `nahi to agar` | else if | chained after first `agar` |
-| `warna` | else | `warna { ... }` |
 | `jab tak` | while | `jab tak (b < 5) { ... }` |
 | `bas` | break | exit loop |
 | `agla` | continue | next iteration |

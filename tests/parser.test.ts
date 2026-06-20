@@ -55,10 +55,12 @@ describe("parser", () => {
       body: [
         {
           type: "PrintStmt",
-          value: {
-            type: "StringLiteral",
-            value: "Salam Dunya",
-          },
+          values: [
+            {
+              type: "StringLiteral",
+              value: "Salam Dunya",
+            },
+          ],
         },
       ],
     });
@@ -159,10 +161,12 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                value: {
-                  type: "StringLiteral",
-                  value: "same",
-                },
+                values: [
+                  {
+                    type: "StringLiteral",
+                    value: "same",
+                  },
+                ],
               },
             ],
           },
@@ -226,10 +230,12 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                value: {
-                  type: "Identifier",
-                  name: "b",
-                },
+                values: [
+                  {
+                    type: "Identifier",
+                    name: "b",
+                  },
+                ],
               },
               {
                 type: "ExprStmt",
@@ -250,11 +256,25 @@ describe("parser", () => {
     });
   });
 
-  it("throws if program does not start with shuru", () => {
-    expect(() => parse(`likho "hi";`)).toThrow(/shuru/);
+  it("parses program without shuru and khatam", () => {
+    const ast = parse(`likho "hi";`);
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          values: [
+            {
+              type: "StringLiteral",
+              value: "hi",
+            },
+          ],
+        },
+      ],
+    });
   });
 
-  it("throws if program does not end with khatam", () => {
+  it("throws if program does not end with khatam when shuru is present", () => {
     expect(() =>
       parse(`
         shuru
@@ -263,14 +283,71 @@ describe("parser", () => {
     ).toThrow(/khatam/);
   });
 
-  it("throws on missing semicolon after print", () => {
-    expect(() =>
-      parse(`
-        shuru
-          likho "hi"
-        khatam
-      `)
-    ).toThrow(/;/);
+  it("parses print statements without trailing semicolons", () => {
+    const ast = parse(`
+      shuru
+        likho "hi"
+      khatam
+    `);
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          values: [
+            {
+              type: "StringLiteral",
+              value: "hi",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("parses multiple comma-separated print values", () => {
+    const ast = parse(`
+      shuru
+        likho 1, 2, 3;
+      khatam
+    `);
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          values: [
+            { type: "NumberLiteral", value: 1 },
+            { type: "NumberLiteral", value: 2 },
+            { type: "NumberLiteral", value: 3 },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("ignores code outside shuru and khatam boundaries", () => {
+    const ast = parse(`
+      this should be ignored
+      shuru
+        likho "hello";
+      khatam
+      and this should also be ignored
+    `);
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          values: [
+            {
+              type: "StringLiteral",
+              value: "hello",
+            },
+          ],
+        },
+      ],
+    });
   });
   it("parses unary minus number", () => {
     const ast = parse(`

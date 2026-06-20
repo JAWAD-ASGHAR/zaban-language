@@ -19,7 +19,7 @@ export type Program = {
 
 export type Stmt =
     | { type: "VarDecl"; name: string; value: Expr }
-    | { type: "PrintStmt"; value: Expr }
+    | { type: "PrintStmt"; values: Expr[] }
     | { type: "IfStmt"; condition: Expr; thenBranch: Stmt; elseBranch?: Stmt }
     | { type: "WhileStmt"; condition: Expr; body: Stmt }
     | { type: "BlockStmt"; body: Stmt[] }
@@ -37,15 +37,29 @@ export class Parser {
     }
 
     private parseProgram(): Program {
-        this.consumeKeyword("shuru", "Program shuru se start hona chahiye");
+        const shuruIndex = this.tokens.findIndex(t => t.type === "KEYWORD" && t.value === "shuru");
 
         const body: Stmt[] = [];
 
-        while (!this.checkKeyword("khatam") && !this.isAtEnd()) {
-            body.push(this.parseStatement());
+        if (shuruIndex !== -1) {
+            this.current = shuruIndex + 1;
+
+            while (!this.checkKeyword("khatam") && !this.isAtEnd()) {
+                body.push(this.parseStatement());
+            }
+
+            this.consumeKeyword("khatam", "Program khatam se end hona chahiye");
+
+            while (!this.isAtEnd()) {
+                this.advance();
+            }
+        } else {
+            this.current = 0;
+            while (!this.isAtEnd()) {
+                body.push(this.parseStatement());
+            }
         }
 
-        this.consumeKeyword("khatam", "Program khatam se end hona chahiye");
         this.consume("EOF", "Expected EOF");
 
         return { type: "Program", body };
@@ -71,7 +85,7 @@ export class Parser {
 
         const value = this.parseExpression();
 
-        this.consume("SEMICOLON", "Expected ';' after variable declaration");
+        this.match("SEMICOLON");
 
         return {
             type: "VarDecl",
@@ -81,13 +95,18 @@ export class Parser {
     }
 
     private parsePrint(): Stmt {
-        const value = this.parseExpression();
+        const values: Expr[] = [];
+        values.push(this.parseExpression());
 
-        this.consume("SEMICOLON", "Expected ';' after likho statement");
+        while (this.match("COMMA")) {
+            values.push(this.parseExpression());
+        }
+
+        this.match("SEMICOLON");
 
         return {
             type: "PrintStmt",
-            value,
+            values,
         };
     }
 
@@ -150,19 +169,19 @@ export class Parser {
     }
 
     private parseBreak(): Stmt {
-        this.consume("SEMICOLON", "Expected ';' after bas");
+        this.match("SEMICOLON");
         return { type: "BreakStmt" };
     }
 
     private parseContinue(): Stmt {
-        this.consume("SEMICOLON", "Expected ';' after agla");
+        this.match("SEMICOLON");
         return { type: "ContinueStmt" };
     }
 
     private parseExprStmt(): Stmt {
         const expr = this.parseExpression();
 
-        this.consume("SEMICOLON", "Expected ';' after expression");
+        this.match("SEMICOLON");
 
         return {
             type: "ExprStmt",
