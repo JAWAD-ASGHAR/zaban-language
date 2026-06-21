@@ -55,10 +55,12 @@ describe("parser", () => {
       body: [
         {
           type: "PrintStmt",
-          value: {
-            type: "StringLiteral",
-            value: "Salam Dunya",
-          },
+          args: [
+            {
+              type: "StringLiteral",
+              value: "Salam Dunya",
+            },
+          ],
         },
       ],
     });
@@ -159,10 +161,12 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                value: {
-                  type: "StringLiteral",
-                  value: "same",
-                },
+                args: [
+                  {
+                    type: "StringLiteral",
+                    value: "same",
+                  },
+                ],
               },
             ],
           },
@@ -226,10 +230,12 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                value: {
-                  type: "Identifier",
-                  name: "b",
-                },
+                args: [
+                  {
+                    type: "Identifier",
+                    name: "b",
+                  },
+                ],
               },
               {
                 type: "ExprStmt",
@@ -250,8 +256,23 @@ describe("parser", () => {
     });
   });
 
-  it("throws if program does not start with shuru", () => {
-    expect(() => parse(`likho "hi";`)).toThrow(/shuru/);
+  it("parses program without shuru/khatam", () => {
+    const ast = parse(`likho "hi"`);
+
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          args: [
+            {
+              type: "StringLiteral",
+              value: "hi",
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it("throws if program does not end with khatam", () => {
@@ -263,14 +284,33 @@ describe("parser", () => {
     ).toThrow(/khatam/);
   });
 
-  it("throws on missing semicolon after print", () => {
-    expect(() =>
-      parse(`
-        shuru
-          likho "hi"
-        khatam
-      `)
-    ).toThrow(/;/);
+  it("parses print without semicolon", () => {
+    const ast = parse(`
+      shuru
+        likho "hi"
+      khatam
+    `);
+
+    expect(ast.body[0]).toMatchObject({
+      type: "PrintStmt",
+      args: [{ type: "StringLiteral", value: "hi" }],
+    });
+  });
+
+  it("parses comma-separated likho args", () => {
+    const ast = parse(`
+      shuru
+        likho "a", b
+      khatam
+    `);
+
+    expect(ast.body[0]).toMatchObject({
+      type: "PrintStmt",
+      args: [
+        { type: "StringLiteral", value: "a" },
+        { type: "Identifier", name: "b" },
+      ],
+    });
   });
   it("parses unary minus number", () => {
     const ast = parse(`
