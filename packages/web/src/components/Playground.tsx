@@ -1,9 +1,33 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { runSource, ZabanError } from "zaban-lang";
 import { DEFAULT_CODE } from "../constants";
 import { Reveal } from "./Reveal";
 
 type OutputKind = "empty" | "success" | "error";
+
+function PanelBar({
+  label,
+  hint,
+}: {
+  label: string;
+  hint?: ReactNode;
+}) {
+  return (
+    <div className="flex h-10 shrink-0 items-center justify-between border-b border-zaban-border px-4">
+      <span className="text-xs font-medium tracking-wide text-zaban-muted uppercase">
+        {label}
+      </span>
+      {hint ?? (
+        <span
+          aria-hidden
+          className="hidden text-xs text-zaban-muted sm:inline sm:invisible"
+        >
+          ⌘ + Enter
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function Playground() {
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -78,7 +102,10 @@ export function Playground() {
       <section id="playground" className="scroll-mt-20 pb-24">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-zaban-ink">
+            <p className="text-xs tracking-wide text-zaban-muted uppercase">
+              Try it
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-zaban-ink">
               Playground
             </h2>
             <p className="mt-1 text-sm text-zaban-muted">
@@ -96,14 +123,16 @@ export function Playground() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-zaban-border">
-          <div className="grid md:grid-cols-2">
-            <div className="border-b border-zaban-border md:border-b-0 md:border-r">
-              <div className="flex items-center justify-between border-b border-zaban-border px-4 py-2.5">
-                <label htmlFor="code" className="text-xs font-medium text-zaban-muted">
-                  Code
-                </label>
-                <span className="hidden text-xs text-zaban-muted sm:inline">⌘ + Enter</span>
-              </div>
+          <div className="playground-panels grid md:grid-cols-2">
+            <div className="flex min-h-0 flex-col border-b border-zaban-border md:border-b-0 md:border-r">
+              <PanelBar
+                label="Code"
+                hint={
+                  <span className="hidden text-xs text-zaban-muted sm:inline">
+                    ⌘ + Enter
+                  </span>
+                }
+              />
               <textarea
                 ref={textareaRef}
                 id="code"
@@ -111,20 +140,16 @@ export function Playground() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="min-h-[280px] w-full resize-y bg-white p-4 font-mono text-sm leading-relaxed text-zaban-ink outline-none transition-colors focus:bg-zaban-surface"
+                className="min-h-0 flex-1 resize-none bg-white p-4 font-mono text-sm leading-relaxed text-zaban-ink outline-none transition-colors focus:bg-zaban-surface"
               />
             </div>
 
-            <div>
-              <div className="border-b border-zaban-border px-4 py-2.5">
-                <label htmlFor="output" className="text-xs font-medium text-zaban-muted">
-                  Output
-                </label>
-              </div>
+            <div className="flex min-h-0 flex-col">
+              <PanelBar label="Output" />
               <pre
                 id="output"
                 aria-live="polite"
-                className={`min-h-[280px] overflow-auto whitespace-pre-wrap break-words bg-zaban-surface p-4 font-mono text-sm leading-relaxed transition-colors duration-300 ${outputClass}`}
+                className={`min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words bg-zaban-surface p-4 font-mono text-sm leading-relaxed transition-colors duration-300 ${outputClass}`}
               >
                 {output}
               </pre>

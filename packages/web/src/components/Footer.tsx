@@ -19,22 +19,28 @@ export function Footer() {
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 text-sm text-zaban-muted">
-          <span>Built by</span>
-          {CREATORS.map((creator, i) => (
-            <span key={creator.linkedin} className="inline-flex items-center">
-              {i > 0 && <span className="mx-1.5 text-zaban-border">·</span>}
-              <a
-                href={creator.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-zaban-ink transition-opacity hover:opacity-60"
-              >
-                {creator.name}
-                <LinkedInIcon />
-              </a>
-            </span>
-          ))}
+        <div className="flex flex-wrap items-center justify-center text-sm text-zaban-muted">
+          <span className="mr-3.5">Built by</span>
+          <div className="flex items-center gap-1">
+            {CREATORS.map((creator, i) => (
+              <span key={creator.linkedin} className="inline-flex items-center">
+                {i > 0 && (
+                  <span aria-hidden className="mx-0.5 text-zaban-border">
+                    ·
+                  </span>
+                )}
+                <a
+                  href={creator.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-zaban-ink transition-opacity hover:opacity-60"
+                >
+                  <LinkedInIcon />
+                  {creator.name}
+                </a>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

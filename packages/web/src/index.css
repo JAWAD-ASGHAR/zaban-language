@@ -18,6 +18,7 @@
   --color-zaban-error: #dc2626;
   --color-zaban-border: #e5e5e5;
   --color-zaban-keyword: #2563eb;
+  --color-zaban-linkedin: #0a66c2;
 }
 
 html {
@@ -190,4 +191,10 @@ code:not(pre code) {
 
 .btn-secondary:active {
   transform: scale(0.98);
+}
+
+.playground-panels {
+  min-height: 320px;
+  resize: vertical;
+  overflow: hidden;
 }

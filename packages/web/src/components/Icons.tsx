@@ -1,6 +1,6 @@
 type IconProps = { className?: string };
 
-export function LinkedInIcon({ className = "size-3.5" }: IconProps) {
+export function LinkedInIcon({ className = "size-3.5 text-zaban-linkedin" }: IconProps) {
   return (
     <svg
       aria-hidden
