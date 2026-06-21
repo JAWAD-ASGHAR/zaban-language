@@ -1,0 +1,50 @@
+{
+  "name": "zaban-lang",
+  "version": "1.1.1",
+  "description": "Zaban — Urdu programming language (lexer, parser, interpreter, CLI)",
+  "homepage": "https://github.com/JAWAD-ASGHAR/zaban-language#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "zaban": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "KEYWORDS.md",
+    "README.md"
+  ],
+  "keywords": [
+    "zaban",
+    "urdu",
+    "programming-language",
+    "interpreter",
+    "education"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JAWAD-ASGHAR/zaban-language.git",
+    "directory": "packages/zaban"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

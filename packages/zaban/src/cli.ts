@@ -28,15 +28,15 @@ if (!command || command === "help" || command === "--help") {
   console.log(`Zaban — Urdu Programming Language
 
 Usage:
-  npm start run <file.zbn>   Run a Zaban program
-  npm test                   Run unit tests
+  zaban run <file.zbn>   Run a Zaban program
+  zaban help             Show this help
 `);
   process.exit(0);
 }
 
 if (command === "run") {
   if (!arg) {
-    console.error("File path required: npm start run examples/demo.zbn");
+    console.error("File path required: zaban run examples/demo.zbn");
     process.exit(1);
   }
   runFile(arg);
