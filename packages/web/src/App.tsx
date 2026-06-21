@@ -10,7 +10,7 @@ export default function App() {
       <Nav />
       <Header />
 
-      <main className="mx-auto max-w-5xl px-6">
+      <main className="mx-auto max-w-5xl space-y-16 px-6 pb-20">
         <Playground />
         <Docs />
       </main>

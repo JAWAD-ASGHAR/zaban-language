@@ -99,15 +99,10 @@ export function Playground() {
           <div className="grid md:grid-cols-2">
             <div className="border-b border-zaban-border md:border-b-0 md:border-r">
               <div className="flex items-center justify-between border-b border-zaban-border px-4 py-2.5">
-                <label
-                  htmlFor="code"
-                  className="text-xs font-medium text-zaban-muted"
-                >
+                <label htmlFor="code" className="text-xs font-medium text-zaban-muted">
                   Code
                 </label>
-                <span className="hidden text-xs text-zaban-muted sm:inline">
-                  ⌘ + Enter
-                </span>
+                <span className="hidden text-xs text-zaban-muted sm:inline">⌘ + Enter</span>
               </div>
               <textarea
                 ref={textareaRef}
@@ -122,10 +117,7 @@ export function Playground() {
 
             <div>
               <div className="border-b border-zaban-border px-4 py-2.5">
-                <label
-                  htmlFor="output"
-                  className="text-xs font-medium text-zaban-muted"
-                >
+                <label htmlFor="output" className="text-xs font-medium text-zaban-muted">
                   Output
                 </label>
               </div>

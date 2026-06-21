@@ -1,9 +1,6 @@
-import { GITHUB_URL, NPM_URL } from "../constants";
-
-const LINKS = [
-  { href: "#playground", label: "Playground" },
-  { href: "#docs", label: "Docs" },
-] as const;
+import { CREATORS } from "../constants";
+import { LinkedInIcon } from "./Icons";
+import { UrduLogo } from "./UrduLogo";
 
 export function Nav() {
   return (
@@ -11,37 +8,25 @@ export function Nav() {
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <a
           href="#"
-          className="text-sm font-semibold tracking-tight text-zaban-ink transition-opacity hover:opacity-70"
+          className="transition-opacity hover:opacity-80"
+          aria-label="Zaban home"
         >
-          Zaban
+          <UrduLogo />
         </a>
 
-        <div className="flex items-center gap-6">
-          {LINKS.map(({ href, label }) => (
+        <div className="flex items-center gap-2">
+          {CREATORS.map((creator) => (
             <a
-              key={href}
-              href={href}
-              className="hidden text-sm text-zaban-muted transition-colors hover:text-zaban-ink sm:inline"
+              key={creator.linkedin}
+              href={creator.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${creator.name} on LinkedIn`}
+              className="inline-flex items-center justify-center rounded-full p-2 text-zaban-muted transition-colors hover:bg-zaban-surface hover:text-zaban-brand"
             >
-              {label}
+              <LinkedInIcon className="size-4" />
             </a>
           ))}
-          <a
-            href={NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-zaban-muted transition-colors hover:text-zaban-ink"
-          >
-            npm
-          </a>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-zaban-muted transition-colors hover:text-zaban-ink"
-          >
-            GitHub
-          </a>
         </div>
       </div>
     </nav>

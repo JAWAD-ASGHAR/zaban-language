@@ -146,19 +146,6 @@ export function Docs() {
                   npx zaban run program.zbn
                 </code>
               </div>
-              <div>
-                <p className="mb-2 font-medium text-zaban-ink">Library</p>
-                <pre className="overflow-x-auto rounded-lg border border-zaban-border bg-zaban-surface p-4 font-mono text-xs leading-relaxed text-zaban-ink">
-                  <code>{`import { runSource } from "zaban-lang";
-
-const lines = runSource(\`
-  shuru
-    likho "Salam"
-  khatam
-\`);
-console.log(lines.join("\\n"));`}</code>
-                </pre>
-              </div>
             </div>
           </DocBlock>
 
