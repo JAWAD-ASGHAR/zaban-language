@@ -194,7 +194,58 @@ code:not(pre code) {
 }
 
 .playground-panels {
-  min-height: 320px;
-  resize: vertical;
+  align-items: stretch;
+}
+
+.playground-editor-wrap {
   overflow: hidden;
+}
+
+.playground-editor {
+  background: #ffffff;
+}
+
+.playground-editor textarea,
+.playground-editor pre {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.playground-editor textarea {
+  background: transparent !important;
+  caret-color: var(--color-zaban-ink);
+  -webkit-text-fill-color: transparent !important;
+}
+
+.playground-editor textarea:focus,
+.playground-editor textarea:focus-visible {
+  outline: none !important;
+  background: transparent !important;
+}
+
+.playground-editor textarea::selection {
+  background: rgb(37 99 235 / 0.2);
+}
+
+.playground-editor .token.keyword {
+  color: var(--color-zaban-keyword);
+}
+
+.playground-editor .token.string {
+  color: #15803d;
+}
+
+.playground-editor .token.number {
+  color: #7c3aed;
+}
+
+.playground-editor .token.operator,
+.playground-editor .token.punctuation {
+  color: var(--color-zaban-muted);
+}
+
+.playground-editor .token.comment {
+  color: #a3a3a3;
+  font-style: italic;
 }
