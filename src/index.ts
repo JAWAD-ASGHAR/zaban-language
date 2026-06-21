@@ -1,24 +1,26 @@
-import fs from "fs";
-import { tokenize } from "./lexer.js";
-import { Parser } from "./parser.js";
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { runSource } from "./interpreter.js";
+import { ZabanError } from "./errors.js";
 
-const filePath = process.argv[2];
+const [, , arg1, arg2] = process.argv;
+const filePath = arg1 === "run" ? arg2 : arg1;
 
 if (!filePath) {
-  console.error("Usage: npm run dev -- <file.zbn>");
+  console.error("Usage: npm start -- examples/demo.zbn");
+  console.error("   or: npm start run examples/demo.zbn");
   process.exit(1);
 }
 
-const source = fs.readFileSync(filePath, "utf8");
-
-const tokens = tokenize(source);
-
-for (const token of tokens) {
-  if (token.type === "EOF") break;
-  console.log(`${token.type} : ${token.value}`);
+try {
+  const source = readFileSync(filePath, "utf-8");
+  for (const line of runSource(source)) {
+    console.log(line);
+  }
+} catch (err) {
+  if (err instanceof ZabanError) {
+    console.error(err.message);
+    process.exit(1);
+  }
+  throw err;
 }
-
-const parser = new Parser(tokens);
-const program = parser.parse();
-
-console.log(JSON.stringify(program, null, 2));

@@ -22,6 +22,7 @@ Code outside `shuru` … `khatam` is ignored when those markers are present. Wit
 | `nahi to agar` | else if | chained after first `agar` |
 | `warna` | else | `warna { ... }` |
 | `jab tak` | while | `jab tak (b < 5) { ... }` |
+| `ghoomo N` | repeat N times | `ghoomo 5 { ... }` |
 | `bas` | break | exit loop |
 | `agla` | continue | next iteration |
 
