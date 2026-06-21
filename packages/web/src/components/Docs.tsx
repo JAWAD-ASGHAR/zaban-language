@@ -24,9 +24,9 @@ function DocTable({
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-zaban-border text-left text-xs text-zaban-muted">
+          <tr className="border-b border-zaban-border bg-zaban-surface text-left text-xs tracking-wide text-zaban-muted uppercase">
             {columns.map((col) => (
-              <th key={col} className="px-4 py-3 font-medium">
+              <th key={col} className="px-5 py-3 font-medium">
                 {col}
               </th>
             ))}
@@ -36,18 +36,18 @@ function DocTable({
           {rows.map((row, i) => (
             <tr
               key={i}
-              className="border-b border-zaban-border transition-colors last:border-0 hover:bg-zaban-surface"
+              className="border-b border-zaban-border transition-colors last:border-0 hover:bg-zaban-surface/60"
             >
               {columns.map((col) => {
                 const key = col.toLowerCase() as keyof DocRow;
                 const value = row[key] ?? "";
+                const isKeyword = col === "Urdu" || col === "Symbols";
                 return (
-                  <td key={col} className="px-4 py-3.5 text-zaban-muted">
-                    {col === "Urdu" || col === "Symbols" ? (
-                      <code>{value}</code>
-                    ) : (
-                      value
-                    )}
+                  <td
+                    key={col}
+                    className={`px-5 py-3.5 ${isKeyword ? "font-mono font-medium text-zaban-ink" : col === "English" || col === "Category" ? "text-zaban-ink" : "text-zaban-muted"}`}
+                  >
+                    {isKeyword ? <code className="bg-transparent p-0">{value}</code> : value}
                   </td>
                 );
               })}
@@ -60,18 +60,44 @@ function DocTable({
 }
 
 function DocBlock({
+  label,
   title,
+  description,
   children,
 }: {
+  label: string;
   title: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
-    <div>
-      <h3 className="text-base font-medium text-zaban-ink">{title}</h3>
-      <div className="mt-4 overflow-hidden rounded-xl border border-zaban-border">
+    <article>
+      <header className="mb-5">
+        <p className="text-xs font-medium tracking-wide text-zaban-brand uppercase">
+          {label}
+        </p>
+        <h3 className="mt-1.5 text-xl font-semibold tracking-tight text-zaban-ink">
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zaban-muted">
+            {description}
+          </p>
+        )}
+      </header>
+      <div className="overflow-hidden rounded-2xl border border-zaban-border">
         {children}
       </div>
+    </article>
+  );
+}
+
+function ExamplePanelBar({ label }: { label: string }) {
+  return (
+    <div className="flex h-10 shrink-0 items-center border-b border-zaban-border px-4">
+      <span className="text-xs font-medium tracking-wide text-zaban-muted uppercase">
+        {label}
+      </span>
     </div>
   );
 }
@@ -89,18 +115,23 @@ function CodeExample({
 }) {
   return (
     <div className="border-b border-zaban-border last:border-0">
-      <div className="border-b border-zaban-border bg-zaban-surface px-4 py-3">
+      <div className="border-b border-zaban-border bg-zaban-surface px-5 py-4">
         <p className="font-medium text-zaban-ink">{title}</p>
-        <p className="mt-0.5 text-sm text-zaban-muted">{description}</p>
+        <p className="mt-1 text-sm text-zaban-muted">{description}</p>
       </div>
-      <pre className="overflow-x-auto bg-white p-4 font-mono text-sm leading-relaxed text-zaban-ink">
-        <code>{code}</code>
-      </pre>
-      <div className="border-t border-zaban-border bg-zaban-surface px-4 py-3">
-        <p className="text-xs font-medium text-zaban-muted">Output</p>
-        <pre className="mt-2 overflow-x-auto font-mono text-sm leading-relaxed text-zaban-success">
-          <code>{output}</code>
-        </pre>
+      <div className="grid md:grid-cols-2">
+        <div className="border-b border-zaban-border md:border-b-0 md:border-r">
+          <ExamplePanelBar label="Code" />
+          <pre className="overflow-x-auto bg-white p-4 font-mono text-sm leading-relaxed text-zaban-ink">
+            <code>{code}</code>
+          </pre>
+        </div>
+        <div>
+          <ExamplePanelBar label="Output" />
+          <pre className="overflow-x-auto bg-zaban-surface p-4 font-mono text-sm leading-relaxed text-zaban-success">
+            <code>{output}</code>
+          </pre>
+        </div>
       </div>
     </div>
   );
@@ -110,88 +141,109 @@ export function Docs() {
   return (
     <Reveal delay={80}>
       <section id="docs" className="scroll-mt-20 border-t border-zaban-border pb-32 pt-24">
-        <div className="mb-12 max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-zaban-ink">
+        <header className="mb-16 max-w-2xl">
+          <p className="text-xs tracking-wide text-zaban-muted uppercase">
+            Reference
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zaban-ink sm:text-4xl">
             Language reference
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-zaban-muted">
+          <p className="mt-4 text-base leading-relaxed text-zaban-muted">
             Zaban is a dynamically typed language with Roman Urdu keywords.
             Install the package, write a <code>.zbn</code> file, and run it from
             the terminal or import it as a library.
           </p>
-        </div>
+        </header>
 
-        <div className="space-y-10">
-          <DocBlock title="Install">
-            <div className="space-y-4 bg-white p-4 text-sm text-zaban-muted">
-              <div>
-                <p className="mb-2 font-medium text-zaban-ink">
-                  npm —{" "}
-                  <a
-                    href={NPM_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-zaban-keyword hover:underline"
-                  >
-                    zaban-lang
-                  </a>
+        <div className="space-y-16">
+          <DocBlock
+            label="Getting started"
+            title="Install"
+            description="Add the package to your project, then run programs from the CLI."
+          >
+            <div className="divide-y divide-zaban-border bg-white">
+              <div className="px-5 py-4">
+                <p className="text-xs font-medium tracking-wide text-zaban-muted uppercase">
+                  npm
                 </p>
-                <code className="block rounded-lg border border-zaban-border bg-zaban-surface px-4 py-3 font-mono text-zaban-ink">
+                <a
+                  href={NPM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-sm font-medium text-zaban-keyword hover:underline"
+                >
+                  zaban-lang
+                </a>
+                <code className="mt-3 block rounded-xl border border-zaban-border bg-zaban-surface px-4 py-3 font-mono text-sm text-zaban-ink">
                   {NPM_INSTALL}
                 </code>
               </div>
-              <div>
-                <p className="mb-2 font-medium text-zaban-ink">CLI</p>
-                <code className="block rounded-lg border border-zaban-border bg-zaban-surface px-4 py-3 font-mono text-zaban-ink">
+              <div className="px-5 py-4">
+                <p className="text-xs font-medium tracking-wide text-zaban-muted uppercase">
+                  CLI
+                </p>
+                <code className="mt-3 block rounded-xl border border-zaban-border bg-zaban-surface px-4 py-3 font-mono text-sm text-zaban-ink">
                   npx zaban run program.zbn
                 </code>
-              </div>
-              <div>
-                <p className="mb-2 font-medium text-zaban-ink">Library</p>
-                <pre className="overflow-x-auto rounded-lg border border-zaban-border bg-zaban-surface p-4 font-mono text-xs leading-relaxed text-zaban-ink">
-                  <code>{`import { runSource } from "zaban-lang";
-
-const lines = runSource(\`
-  shuru
-    likho "Salam"
-  khatam
-\`);
-console.log(lines.join("\\n"));`}</code>
-                </pre>
               </div>
             </div>
           </DocBlock>
 
-          <DocBlock title="Notes">
-            <ul className="list-disc space-y-2 bg-white px-6 py-4 text-sm text-zaban-muted">
+          <DocBlock
+            label="Basics"
+            title="Notes"
+            description="A few conventions worth knowing before you write your first program."
+          >
+            <ul className="divide-y divide-zaban-border bg-white">
               {DOC_NOTES.map((note) => (
-                <li key={note}>{note}</li>
+                <li
+                  key={note}
+                  className="px-5 py-3.5 text-sm leading-relaxed text-zaban-muted"
+                >
+                  {note}
+                </li>
               ))}
             </ul>
           </DocBlock>
 
-          <DocBlock title="Program structure">
+          <DocBlock
+            label="Syntax"
+            title="Program structure"
+            description="Every program is wrapped in a start and end block."
+          >
             <DocTable
               columns={["Urdu", "English", "Usage"]}
               rows={PROGRAM_STRUCTURE.map((r) => ({ ...r }))}
             />
           </DocBlock>
 
-          <DocBlock title="Statements">
+          <DocBlock
+            label="Syntax"
+            title="Statements"
+            description="Keywords for printing, declaring variables, branching, and looping."
+          >
             <DocTable
               columns={["Urdu", "English", "Usage"]}
               rows={STATEMENTS.map((r) => ({ ...r }))}
             />
           </DocBlock>
 
-          <DocBlock title="Literals">
+          <DocBlock
+            label="Syntax"
+            title="Literals"
+            description="Built-in values for booleans, null, numbers, and strings."
+          >
             <DocTable
               columns={["Urdu", "English", "Usage"]}
               rows={LITERALS.map((r) => ({ ...r }))}
             />
           </DocBlock>
 
-          <DocBlock title="Operators">
+          <DocBlock
+            label="Syntax"
+            title="Operators"
+            description="Arithmetic, comparison, equality, and assignment operators."
+          >
             <DocTable
               columns={["Category", "Symbols", "Note"]}
               rows={OPERATORS.map((r) => ({
@@ -202,14 +254,24 @@ console.log(lines.join("\\n"));`}</code>
             />
           </DocBlock>
 
-          <div>
-            <h3 className="text-base font-medium text-zaban-ink">Examples</h3>
-            <div className="mt-4 overflow-hidden rounded-xl border border-zaban-border">
+          <article>
+            <header className="mb-5">
+              <p className="text-xs font-medium tracking-wide text-zaban-brand uppercase">
+                Cookbook
+              </p>
+              <h3 className="mt-1.5 text-xl font-semibold tracking-tight text-zaban-ink">
+                Examples
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zaban-muted">
+                Short programs with expected output — same layout as the playground.
+              </p>
+            </header>
+            <div className="overflow-hidden rounded-2xl border border-zaban-border">
               {DOC_EXAMPLES.map((example) => (
                 <CodeExample key={example.title} {...example} />
               ))}
             </div>
-          </div>
+          </article>
         </div>
       </section>
     </Reveal>
