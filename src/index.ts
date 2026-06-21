@@ -1,21 +1,46 @@
-import fs from "fs";
-import { tokenize } from "./lexer.js";
-import { Parser } from "./parser.js";
-import { Interpreter } from "./interpreter.js";
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { runSource } from "./interpreter.js";
+import { ZabanError } from "./errors.js";
 
-const filePath = process.argv[2];
-
-if (!filePath) {
-  console.error("Usage: npm run dev -- <file.zbn>");
-  process.exit(1);
+function printOutput(lines: string[]): void {
+  for (const line of lines) {
+    console.log(line);
+  }
 }
 
-const source = fs.readFileSync(filePath, "utf8");
+function runFile(filePath: string): void {
+  const source = readFileSync(filePath, "utf-8");
+  try {
+    printOutput(runSource(source));
+  } catch (err) {
+    if (err instanceof ZabanError) {
+      console.error(err.message);
+      process.exit(1);
+    }
+    throw err;
+  }
+}
 
-const tokens = tokenize(source);
+const [, , command, arg] = process.argv;
 
-const parser = new Parser(tokens);
-const program = parser.parse();
+if (!command || command === "help" || command === "--help") {
+  console.log(`Zaban — Urdu Programming Language
 
-const interpreter = new Interpreter();
-interpreter.interpret(program);
+Usage:
+  npm start run <file.zbn>   Run a Zaban program
+  npm test                   Run unit tests
+`);
+  process.exit(0);
+}
+
+if (command === "run") {
+  if (!arg) {
+    console.error("File path required: npm start run examples/demo.zbn");
+    process.exit(1);
+  }
+  runFile(arg);
+} else {
+  console.error(`Unknown command: ${command}`);
+  process.exit(1);
+}

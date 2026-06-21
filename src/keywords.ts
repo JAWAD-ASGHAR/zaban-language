@@ -7,6 +7,7 @@ export const KEYWORDS = [
   "agar",
   "nahi",
   "to",
+  "warna",
   "jab",
   "tak",
   "bas",

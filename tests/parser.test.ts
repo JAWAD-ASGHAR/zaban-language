@@ -55,7 +55,7 @@ describe("parser", () => {
       body: [
         {
           type: "PrintStmt",
-          values: [
+          args: [
             {
               type: "StringLiteral",
               value: "Salam Dunya",
@@ -161,7 +161,7 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                values: [
+                args: [
                   {
                     type: "StringLiteral",
                     value: "same",
@@ -230,7 +230,7 @@ describe("parser", () => {
             body: [
               {
                 type: "PrintStmt",
-                values: [
+                args: [
                   {
                     type: "Identifier",
                     name: "b",
@@ -256,14 +256,15 @@ describe("parser", () => {
     });
   });
 
-  it("parses program without shuru and khatam", () => {
-    const ast = parse(`likho "hi";`);
+  it("parses program without shuru/khatam", () => {
+    const ast = parse(`likho "hi"`);
+
     expect(ast).toEqual({
       type: "Program",
       body: [
         {
           type: "PrintStmt",
-          values: [
+          args: [
             {
               type: "StringLiteral",
               value: "hi",
@@ -283,24 +284,31 @@ describe("parser", () => {
     ).toThrow(/khatam/);
   });
 
-  it("parses print statements without trailing semicolons", () => {
+  it("parses print without semicolon", () => {
     const ast = parse(`
       shuru
         likho "hi"
       khatam
     `);
-    expect(ast).toEqual({
-      type: "Program",
-      body: [
-        {
-          type: "PrintStmt",
-          values: [
-            {
-              type: "StringLiteral",
-              value: "hi",
-            },
-          ],
-        },
+
+    expect(ast.body[0]).toMatchObject({
+      type: "PrintStmt",
+      args: [{ type: "StringLiteral", value: "hi" }],
+    });
+  });
+
+  it("parses comma-separated likho args", () => {
+    const ast = parse(`
+      shuru
+        likho "a", b
+      khatam
+    `);
+
+    expect(ast.body[0]).toMatchObject({
+      type: "PrintStmt",
+      args: [
+        { type: "StringLiteral", value: "a" },
+        { type: "Identifier", name: "b" },
       ],
     });
   });
@@ -311,12 +319,13 @@ describe("parser", () => {
         likho 1, 2, 3;
       khatam
     `);
+
     expect(ast).toEqual({
       type: "Program",
       body: [
         {
           type: "PrintStmt",
-          values: [
+          args: [
             { type: "NumberLiteral", value: 1 },
             { type: "NumberLiteral", value: 2 },
             { type: "NumberLiteral", value: 3 },
@@ -334,12 +343,13 @@ describe("parser", () => {
       khatam
       and this should also be ignored
     `);
+
     expect(ast).toEqual({
       type: "Program",
       body: [
         {
           type: "PrintStmt",
-          values: [
+          args: [
             {
               type: "StringLiteral",
               value: "hello",
@@ -349,6 +359,7 @@ describe("parser", () => {
       ],
     });
   });
+
   it("parses unary minus number", () => {
     const ast = parse(`
     shuru

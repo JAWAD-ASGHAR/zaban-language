@@ -1,338 +1,245 @@
-import type { Program, Stmt, Expr } from "./parser.js";
+import { tokenize } from "./lexer.js";
+import { Parser, type Expr, type Program, type Stmt } from "./parser.js";
+import { Environment } from "./runtime/Environment.js";
 import { zabanError } from "./errors.js";
 
-type RuntimeValue = number | string | boolean | null;
+class BreakSignal extends Error {
+  readonly kind = "break";
+}
 
-class BreakSignal extends Error {}
-class ContinueSignal extends Error {}
-
-class Environment {
-  private values = new Map<string, RuntimeValue>();
-
-  constructor(private parent?: Environment) {}
-
-  define(name: string, value: RuntimeValue): void {
-    if (this.values.has(name)) {
-      throw new Error(`Variable '${name}' already declared`);
-    }
-
-    this.values.set(name, value);
-  }
-
-  get(name: string): RuntimeValue {
-    if (this.values.has(name)) {
-      return this.values.get(name)!;
-    }
-
-    if (this.parent) {
-      return this.parent.get(name);
-    }
-
-    throw new Error(`Undefined variable '${name}'`);
-  }
-
-  assign(name: string, value: RuntimeValue): void {
-    if (this.values.has(name)) {
-      this.values.set(name, value);
-      return;
-    }
-
-    if (this.parent) {
-      this.parent.assign(name, value);
-      return;
-    }
-
-    throw new Error(`Undefined variable '${name}'`);
-  }
+class ContinueSignal extends Error {
+  readonly kind = "continue";
 }
 
 export class Interpreter {
+  private output: string[] = [];
   private env = new Environment();
 
-  interpret(program: Program): void {
-    try {
-      for (const stmt of program.body) {
-        this.execute(stmt);
-      }
-    } catch (error) {
-      if (error instanceof BreakSignal) {
-        throw new Error("'bas' used outside loop");
-      }
+  constructor(private program: Program) {}
 
-      if (error instanceof ContinueSignal) {
-        throw new Error("'agla' used outside loop");
-      }
+  run(): string[] {
+    this.executeStatements(this.program.body);
+    return this.output;
+  }
 
-      throw error;
+  private executeStatements(stmts: Stmt[]): void {
+    for (const stmt of stmts) {
+      this.executeStatement(stmt);
     }
   }
 
-  private execute(stmt: Stmt): void {
+  private executeStatement(stmt: Stmt): void {
     switch (stmt.type) {
-      case "VarDecl":
-        this.executeVarDecl(stmt);
-        return;
-
       case "PrintStmt":
-        console.log(stmt.values.map(v => this.stringify(this.evaluate(v))).join(" "));
-        return;
-
+        this.executePrint(stmt);
+        break;
+      case "VarDecl":
+        this.env.defineVar(stmt.name, this.evalExpr(stmt.value), 0, 0);
+        break;
       case "ExprStmt":
-        this.evaluate(stmt.expr);
-        return;
-
+        this.executeExprStmt(stmt);
+        break;
       case "BlockStmt":
-        this.executeBlock(stmt.body, new Environment(this.env));
-        return;
-
+        this.executeBlock(stmt.body);
+        break;
       case "IfStmt":
         this.executeIf(stmt);
-        return;
-
+        break;
       case "WhileStmt":
         this.executeWhile(stmt);
-        return;
-
+        break;
       case "BreakStmt":
         throw new BreakSignal();
-
       case "ContinueStmt":
         throw new ContinueSignal();
-
-      default:
-        this.unreachable(stmt);
     }
   }
 
-  private executeVarDecl(stmt: Extract<Stmt, { type: "VarDecl" }>): void {
-    const value = this.evaluate(stmt.value);
-    this.env.define(stmt.name, value);
-  }
-
-  private executeBlock(body: Stmt[], environment: Environment): void {
-    const previous = this.env;
-
+  private executeBlock(body: Stmt[]): void {
+    const child = this.env.child();
+    const prevEnv = this.env;
+    this.env = child;
     try {
-      this.env = environment;
-
-      for (const stmt of body) {
-        this.execute(stmt);
-      }
+      this.executeStatements(body);
     } finally {
-      this.env = previous;
+      this.env = prevEnv;
     }
+  }
+
+  private executePrint(stmt: { args: Expr[] }): void {
+    if (stmt.args.length === 0) {
+      zabanError("likho ke baad value chahiye", 0, 0);
+    }
+    for (const arg of stmt.args) {
+      this.print(this.evalExpr(arg));
+    }
+  }
+
+  private executeExprStmt(stmt: { expr: Expr }): void {
+    if (stmt.expr.type === "AssignExpr") {
+      this.executeAssign(stmt.expr);
+      return;
+    }
+    this.evalExpr(stmt.expr);
+  }
+
+  private executeAssign(expr: Extract<Expr, { type: "AssignExpr" }>): void {
+    const line = 0;
+    const column = 0;
+    const rhs = this.evalExpr(expr.value);
+    let result: unknown;
+
+    if (expr.operator === "=") {
+      result = rhs;
+    } else {
+      const current = this.env.getVar(expr.name, line, column);
+      result = this.binaryOp(expr.operator.slice(0, -1), current, rhs, line, column);
+    }
+
+    this.env.assignVar(expr.name, result, line, column);
   }
 
   private executeIf(stmt: Extract<Stmt, { type: "IfStmt" }>): void {
-    const condition = this.evaluate(stmt.condition);
-
-    if (this.isTruthy(condition)) {
-      this.execute(stmt.thenBranch);
+    if (this.isTruthy(this.evalExpr(stmt.condition))) {
+      this.executeStatement(stmt.thenBranch);
       return;
     }
-
     if (stmt.elseBranch) {
-      this.execute(stmt.elseBranch);
+      this.executeStatement(stmt.elseBranch);
     }
   }
 
   private executeWhile(stmt: Extract<Stmt, { type: "WhileStmt" }>): void {
-    while (this.isTruthy(this.evaluate(stmt.condition))) {
+    while (this.isTruthy(this.evalExpr(stmt.condition))) {
       try {
-        this.execute(stmt.body);
-      } catch (error) {
-        if (error instanceof BreakSignal) {
-          break;
-        }
-
-        if (error instanceof ContinueSignal) {
-          continue;
-        }
-
-        throw error;
+        this.executeStatement(stmt.body);
+      } catch (e) {
+        if (e instanceof BreakSignal) break;
+        if (e instanceof ContinueSignal) continue;
+        throw e;
       }
     }
   }
 
-  private evaluate(expr: Expr): RuntimeValue {
+  private evalExpr(expr: Expr): unknown {
     switch (expr.type) {
       case "NumberLiteral":
         return expr.value;
-
       case "StringLiteral":
         return expr.value;
-
       case "BooleanLiteral":
         return expr.value;
-
       case "NullLiteral":
         return null;
-
       case "Identifier":
-        return this.env.get(expr.name);
-
+        return this.env.getVar(expr.name, 0, 0);
       case "UnaryExpr":
-        return this.evaluateUnary(expr);
-
+        return this.evalUnary(expr);
       case "BinaryExpr":
-        return this.evaluateBinary(expr);
-
+        return this.binaryOp(
+          expr.operator,
+          this.evalExpr(expr.left),
+          this.evalExpr(expr.right),
+          0,
+          0
+        );
       case "AssignExpr":
-        return this.evaluateAssignment(expr);
-
-      default:
-        this.unreachable(expr);
+        this.executeAssign(expr);
+        return this.env.getVar(expr.name, 0, 0);
     }
   }
 
-  private evaluateUnary(expr: Extract<Expr, { type: "UnaryExpr" }>): RuntimeValue {
-    const right = this.evaluate(expr.right);
-
-    switch (expr.operator) {
-      case "-":
-        this.assertNumber(right, "Unary '-' expects a number");
-        return -right;
-
-      default:
-        throw new Error(`Unknown unary operator '${expr.operator}'`);
+  private evalUnary(expr: Extract<Expr, { type: "UnaryExpr" }>): number {
+    if (expr.operator === "-") {
+      const value = this.evalExpr(expr.right);
+      if (typeof value !== "number") {
+        zabanError("Unary minus sirf number par", 0, 0);
+      }
+      return -value;
     }
+    zabanError(`Unknown unary operator: ${expr.operator}`, 0, 0);
   }
 
-  private evaluateBinary(expr: Extract<Expr, { type: "BinaryExpr" }>): RuntimeValue {
-    const left = this.evaluate(expr.left);
-    const right = this.evaluate(expr.right);
-
-    switch (expr.operator) {
+  private binaryOp(
+    op: string,
+    left: unknown,
+    right: unknown,
+    line: number,
+    column: number
+  ): unknown {
+    switch (op) {
       case "+":
         if (typeof left === "string" || typeof right === "string") {
           return String(left) + String(right);
         }
-
-        this.assertNumber(left, "'+' left side must be a number or string");
-        this.assertNumber(right, "'+' right side must be a number or string");
-        return left + right;
-
-      case "-":
-        this.assertNumber(left, "'-' left side must be a number");
-        this.assertNumber(right, "'-' right side must be a number");
-        return left - right;
-
-      case "*":
-        this.assertNumber(left, "'*' left side must be a number");
-        this.assertNumber(right, "'*' right side must be a number");
-        return left * right;
-
-      case "/":
-        this.assertNumber(left, "'/' left side must be a number");
-        this.assertNumber(right, "'/' right side must be a number");
-
-        if (right === 0) {
-          throw new Error("Division by zero");
+        if (typeof left === "number" && typeof right === "number") {
+          return left + right;
         }
-
-        return left / right;
-
+        zabanError("Invalid + operands", line, column);
+      case "-":
+        if (typeof left === "number" && typeof right === "number") {
+          return left - right;
+        }
+        zabanError("Invalid - operands", line, column);
+      case "*":
+        if (typeof left === "number" && typeof right === "number") {
+          return left * right;
+        }
+        zabanError("Invalid * operands", line, column);
+      case "/":
+        if (typeof left === "number" && typeof right === "number") {
+          if (right === 0) {
+            zabanError("Zero se divide nahi ho sakta", line, column);
+          }
+          return left / right;
+        }
+        zabanError("Invalid / operands", line, column);
       case "==":
         return left === right;
-
       case "!=":
         return left !== right;
-
       case "<":
-        this.assertNumber(left, "'<' left side must be a number");
-        this.assertNumber(right, "'<' right side must be a number");
-        return left < right;
-
+        if (typeof left === "number" && typeof right === "number") {
+          return left < right;
+        }
+        zabanError("Invalid < operands", line, column);
       case ">":
-        this.assertNumber(left, "'>' left side must be a number");
-        this.assertNumber(right, "'>' right side must be a number");
-        return left > right;
-
+        if (typeof left === "number" && typeof right === "number") {
+          return left > right;
+        }
+        zabanError("Invalid > operands", line, column);
       case "<=":
-        this.assertNumber(left, "'<=' left side must be a number");
-        this.assertNumber(right, "'<=' right side must be a number");
-        return left <= right;
-
+        if (typeof left === "number" && typeof right === "number") {
+          return left <= right;
+        }
+        zabanError("Invalid <= operands", line, column);
       case ">=":
-        this.assertNumber(left, "'>=' left side must be a number");
-        this.assertNumber(right, "'>=' right side must be a number");
-        return left >= right;
-
-      default:
-        throw new Error(`Unknown binary operator '${expr.operator}'`);
-    }
-  }
-
-  private evaluateAssignment(expr: Extract<Expr, { type: "AssignExpr" }>): RuntimeValue {
-    const oldValue = this.env.get(expr.name);
-    const value = this.evaluate(expr.value);
-
-    let finalValue: RuntimeValue;
-
-    switch (expr.operator) {
-      case "=":
-        finalValue = value;
-        break;
-
-      case "+=":
-        if (typeof oldValue === "string" || typeof value === "string") {
-          finalValue = String(oldValue) + String(value);
-        } else {
-          this.assertNumber(oldValue, "'+=' old value must be a number or string");
-          this.assertNumber(value, "'+=' new value must be a number or string");
-          finalValue = oldValue + value;
+        if (typeof left === "number" && typeof right === "number") {
+          return left >= right;
         }
-        break;
-
-      case "-=":
-        this.assertNumber(oldValue, "'-=' old value must be a number");
-        this.assertNumber(value, "'-=' new value must be a number");
-        finalValue = oldValue - value;
-        break;
-
-      case "*=":
-        this.assertNumber(oldValue, "'*=' old value must be a number");
-        this.assertNumber(value, "'*=' new value must be a number");
-        finalValue = oldValue * value;
-        break;
-
-      case "/=":
-        this.assertNumber(oldValue, "'/=' old value must be a number");
-        this.assertNumber(value, "'/=' new value must be a number");
-
-        if (value === 0) {
-          throw new Error("Division by zero");
-        }
-
-        finalValue = oldValue / value;
-        break;
-
+        zabanError("Invalid >= operands", line, column);
       default:
-        throw new Error(`Unknown assignment operator '${expr.operator}'`);
-    }
-
-    this.env.assign(expr.name, finalValue);
-    return finalValue;
-  }
-
-  private isTruthy(value: RuntimeValue): boolean {
-    return value !== false && value !== null && value !== 0 && value !== "";
-  }
-
-  private stringify(value: RuntimeValue): string {
-    if (value === null) return "khaali";
-    if (value === true) return "sach";
-    if (value === false) return "jhoot";
-    return String(value);
-  }
-
-  private assertNumber(value: RuntimeValue, message: string): asserts value is number {
-    if (typeof value !== "number") {
-      throw new Error(message);
+        zabanError(`Unknown operator: ${op}`, line, column);
     }
   }
 
-  private unreachable(value: never): never {
-    throw new Error(`Unknown AST node: ${JSON.stringify(value)}`);
+  private isTruthy(value: unknown): boolean {
+    if (value === null) return false;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") return value.length > 0;
+    return true;
   }
+
+  private print(value: unknown): void {
+    this.output.push(String(value));
+  }
+}
+
+export function runSource(source: string): string[] {
+  const tokens = tokenize(source);
+  const parser = new Parser(tokens);
+  const program = parser.parse();
+  const interpreter = new Interpreter(program);
+  return interpreter.run();
 }
