@@ -275,7 +275,7 @@ describe("parser", () => {
     });
   });
 
-  it("throws if program does not end with khatam", () => {
+  it("throws if program does not end with khatam when shuru is present", () => {
     expect(() =>
       parse(`
         shuru
@@ -312,6 +312,54 @@ describe("parser", () => {
       ],
     });
   });
+
+  it("parses multiple comma-separated print values", () => {
+    const ast = parse(`
+      shuru
+        likho 1, 2, 3;
+      khatam
+    `);
+
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          args: [
+            { type: "NumberLiteral", value: 1 },
+            { type: "NumberLiteral", value: 2 },
+            { type: "NumberLiteral", value: 3 },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("ignores code outside shuru and khatam boundaries", () => {
+    const ast = parse(`
+      this should be ignored
+      shuru
+        likho "hello";
+      khatam
+      and this should also be ignored
+    `);
+
+    expect(ast).toEqual({
+      type: "Program",
+      body: [
+        {
+          type: "PrintStmt",
+          args: [
+            {
+              type: "StringLiteral",
+              value: "hello",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it("parses unary minus number", () => {
     const ast = parse(`
     shuru
