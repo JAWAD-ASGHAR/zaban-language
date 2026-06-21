@@ -1,430 +1,397 @@
-import type {
-  ProgramNode,
-  StatementNode,
-  ExprNode,
-  IfBranchNode,
-  BlockStmtNode,
-  CountLoopNode,
-} from "./ast.js";
-import { zabanError } from "./errors.js";
 import type { Token, TokenType } from "./lexer.js";
+import { zabanError } from "./errors.js";
+
+export type Expr =
+    | { type: "NumberLiteral"; value: number }
+    | { type: "StringLiteral"; value: string }
+    | { type: "BooleanLiteral"; value: boolean }
+    | { type: "NullLiteral" }
+    | { type: "Identifier"; name: string }
+    | { type: "UnaryExpr"; operator: string; right: Expr }
+    | { type: "BinaryExpr"; operator: string; left: Expr; right: Expr }
+    | { type: "AssignExpr"; name: string; operator: string; value: Expr };
+
+
+export type Program = {
+    type: "Program";
+    body: Stmt[];
+};
+
+export type Stmt =
+    | { type: "VarDecl"; name: string; value: Expr }
+    | { type: "PrintStmt"; value: Expr }
+    | { type: "IfStmt"; condition: Expr; thenBranch: Stmt; elseBranch?: Stmt }
+    | { type: "WhileStmt"; condition: Expr; body: Stmt }
+    | { type: "BlockStmt"; body: Stmt[] }
+    | { type: "BreakStmt" }
+    | { type: "ContinueStmt" }
+    | { type: "ExprStmt"; expr: Expr };
 
 export class Parser {
-  private pos = 0;
+    private current = 0;
 
-  constructor(private tokens: Token[]) {}
+    constructor(private tokens: Token[]) { }
 
-  parse(): ProgramNode {
-    this.skipSemicolons();
-
-    const shuruPos = this.findKeyword("shuru");
-    if (shuruPos >= 0) {
-      this.pos = shuruPos;
-      this.advance();
-      const body = this.parseStatementListUntil("khatam");
-      if (!this.checkKeyword("khatam")) {
-        const t = this.peek();
-        zabanError("Program 'khatam' se khatam hona chahiye", t.line, t.column);
-      }
-      this.advance();
-      return { type: "Program", body };
+    parse(): Program {
+        return this.parseProgram();
     }
 
-    const body = this.parseStatementListUntil("EOF");
-    return { type: "Program", body };
-  }
+    private parseProgram(): Program {
+        this.consumeKeyword("shuru", "Program shuru se start hona chahiye");
 
-  private findKeyword(kw: string): number {
-    for (let i = this.pos; i < this.tokens.length; i++) {
-      const t = this.tokens[i]!;
-      if (t.type === "KEYWORD" && t.value === kw) return i;
-    }
-    return -1;
-  }
+        const body: Stmt[] = [];
 
-  private parseStatementListUntil(end: "khatam" | "EOF"): StatementNode[] {
-    const stmts: StatementNode[] = [];
-    while (!this.isAtEnd()) {
-      this.skipSemicolons();
-      if (this.isAtEnd()) break;
-      if (end === "khatam" && this.checkKeyword("khatam")) break;
-      stmts.push(this.parseStatement());
-    }
-    return stmts;
-  }
+        while (!this.checkKeyword("khatam") && !this.isAtEnd()) {
+            body.push(this.parseStatement());
+        }
 
-  private parseStatement(): StatementNode {
-    const token = this.peek();
+        this.consumeKeyword("khatam", "Program khatam se end hona chahiye");
+        this.consume("EOF", "Expected EOF");
 
-    if (token.type === "KEYWORD" && token.value === "likho") {
-      return this.parsePrint();
-    }
-    if (token.type === "KEYWORD" && token.value === "ye") {
-      return this.parseVarDecl();
-    }
-    if (token.type === "KEYWORD" && token.value === "agar") {
-      return this.parseIf();
-    }
-    if (token.type === "KEYWORD" && token.value === "jab") {
-      return this.parseWhile();
-    }
-    if (token.type === "KEYWORD" && token.value === "ghoomo") {
-      return this.parseCountLoop();
-    }
-    if (token.type === "KEYWORD" && token.value === "bas") {
-      const t = this.advance();
-      this.skipSemicolons();
-      return { type: "Break", line: t.line, column: t.column };
-    }
-    if (token.type === "KEYWORD" && token.value === "agla") {
-      const t = this.advance();
-      this.skipSemicolons();
-      return { type: "Continue", line: t.line, column: t.column };
-    }
-    if (token.type === "LBRACE") {
-      return this.parseBlockStmt();
-    }
-    if (token.type === "IDENTIFIER") {
-      return this.parseAssign();
+        return { type: "Program", body };
     }
 
-    zabanError(`Statement expected, got ${token.type}`, token.line, token.column);
-  }
+    private parseStatement(): Stmt {
+        if (this.matchKeyword("ye")) return this.parseVarDecl();
+        if (this.matchKeyword("likho")) return this.parsePrint();
+        if (this.matchKeyword("agar")) return this.parseIf();
+        if (this.matchKeyword("jab")) return this.parseWhile();
+        if (this.match("LBRACE")) return this.parseBlock();
+        if (this.matchKeyword("bas")) return this.parseBreak();
+        if (this.matchKeyword("agla")) return this.parseContinue();
 
-  private parsePrint(): StatementNode {
-    const t = this.advance();
-    const args: ExprNode[] = [];
-    if (!this.isStatementEnd()) {
-      args.push(this.parseExpr());
-      while (this.check("COMMA")) {
-        this.advance();
-        args.push(this.parseExpr());
-      }
-    }
-    this.skipSemicolons();
-    return { type: "Print", args, line: t.line, column: t.column };
-  }
-
-  private parseVarDecl(): StatementNode {
-    const t = this.advance();
-    this.expectKeyword("hai", "'ye hai' ke liye 'hai' chahiye");
-    const nameToken = this.expect("IDENTIFIER", "Variable ka naam chahiye");
-    this.expect("ASSIGN", "'=' expected in variable declaration");
-    const init = this.parseExpr();
-    this.skipSemicolons();
-    return {
-      type: "VarDecl",
-      name: nameToken.value,
-      init,
-      line: t.line,
-      column: t.column,
-    };
-  }
-
-  private parseAssign(): StatementNode {
-    const nameToken = this.advance();
-    const opToken = this.peek();
-    let operator: "=" | "+=" | "-=" | "*=" | "/=";
-    if (opToken.type === "ASSIGN") operator = "=";
-    else if (opToken.type === "PLUSEQ") operator = "+=";
-    else if (opToken.type === "MINUSEQ") operator = "-=";
-    else if (opToken.type === "STAREQ") operator = "*=";
-    else if (opToken.type === "SLASHEQ") operator = "/=";
-    else {
-      zabanError("Assignment operator expected (=, +=, ...)", opToken.line, opToken.column);
-    }
-    this.advance();
-    const value = this.parseExpr();
-    this.skipSemicolons();
-    return {
-      type: "Assign",
-      name: nameToken.value,
-      operator,
-      value,
-      line: nameToken.line,
-      column: nameToken.column,
-    };
-  }
-
-  private parseIf(): StatementNode {
-    const t = this.advance();
-    const branches: IfBranchNode[] = [];
-    branches.push(this.parseIfBranchBody());
-    let elseBody: StatementNode[] | null = null;
-
-    while (this.checkKeyword("nahi")) {
-      this.advance();
-      this.expectKeyword("to", "'nahi to agar' expected");
-      if (this.checkKeyword("agar")) {
-        this.advance();
-        branches.push(this.parseIfBranchBody());
-      } else {
-        elseBody = this.parseBlockBody();
-        break;
-      }
+        return this.parseExprStmt();
     }
 
-    if (elseBody === null && this.checkKeyword("warna")) {
-      this.advance();
-      elseBody = this.parseBlockBody();
+    private parseVarDecl(): Stmt {
+        this.consumeKeyword("hai", "Expected 'hai' after 'ye'");
+
+        const name = this.consume("IDENTIFIER", "Expected variable name");
+        this.consume("ASSIGN", "Expected '=' after variable name");
+
+        const value = this.parseExpression();
+
+        this.consume("SEMICOLON", "Expected ';' after variable declaration");
+
+        return {
+            type: "VarDecl",
+            name: name.value,
+            value,
+        };
     }
 
-    return { type: "If", branches, elseBody, line: t.line, column: t.column };
-  }
+    private parsePrint(): Stmt {
+        const value = this.parseExpression();
 
-  private parseIfBranchBody(): IfBranchNode {
-    this.expect("LPAREN", "'(' expected after agar");
-    const condition = this.parseExpr();
-    this.expect("RPAREN", "')' expected after condition");
-    const body = this.parseBlockBody();
-    return { condition, body };
-  }
+        this.consume("SEMICOLON", "Expected ';' after likho statement");
 
-  private parseWhile(): StatementNode {
-    const t = this.advance();
-    this.expectKeyword("tak", "'jab tak' ke liye 'tak' chahiye");
-    this.expect("LPAREN", "'(' expected after jab tak");
-    const condition = this.parseExpr();
-    this.expect("RPAREN", "')' expected after condition");
-    const body = this.parseBlockBody();
-    return { type: "While", condition, body, line: t.line, column: t.column };
-  }
-
-  private parseCountLoop(): CountLoopNode {
-    const t = this.advance();
-    const countToken = this.expect("NUMBER", "ghoomo ke baad number chahiye");
-    const body = this.parseBlockBody();
-    return {
-      type: "CountLoop",
-      count: Number(countToken.value),
-      body,
-      line: t.line,
-      column: t.column,
-    };
-  }
-
-  private parseBlockStmt(): BlockStmtNode {
-    const t = this.advance();
-    const body: StatementNode[] = [];
-    while (!this.check("RBRACE") && !this.isAtEnd()) {
-      body.push(this.parseStatement());
-    }
-    this.expect("RBRACE", "'}' expected");
-    return { type: "BlockStmt", body, line: t.line, column: t.column };
-  }
-
-  private parseBlockBody(): StatementNode[] {
-    this.expect("LBRACE", "'{' expected");
-    const body: StatementNode[] = [];
-    while (!this.check("RBRACE") && !this.isAtEnd()) {
-      body.push(this.parseStatement());
-    }
-    this.expect("RBRACE", "'}' expected");
-    return body;
-  }
-
-  private parseExpr(): ExprNode {
-    return this.parseComparison();
-  }
-
-  private parseComparison(): ExprNode {
-    let left = this.parseAddition();
-    while (
-      this.check("EQ") ||
-      this.check("NEQ") ||
-      this.check("LT") ||
-      this.check("GT") ||
-      this.check("LTE") ||
-      this.check("GTE")
-    ) {
-      const op = this.advance();
-      const right = this.parseAddition();
-      left = {
-        type: "BinaryExpr",
-        operator: op.value,
-        left,
-        right,
-        line: op.line,
-        column: op.column,
-      };
-    }
-    return left;
-  }
-
-  private parseAddition(): ExprNode {
-    let left = this.parseMultiplication();
-    while (this.check("PLUS") || this.check("MINUS")) {
-      const op = this.advance();
-      const right = this.parseMultiplication();
-      left = {
-        type: "BinaryExpr",
-        operator: op.value,
-        left,
-        right,
-        line: op.line,
-        column: op.column,
-      };
-    }
-    return left;
-  }
-
-  private parseMultiplication(): ExprNode {
-    let left = this.parseUnary();
-    while (this.check("STAR") || this.check("SLASH")) {
-      const op = this.advance();
-      const right = this.parseUnary();
-      left = {
-        type: "BinaryExpr",
-        operator: op.value,
-        left,
-        right,
-        line: op.line,
-        column: op.column,
-      };
-    }
-    return left;
-  }
-
-  private parseUnary(): ExprNode {
-    if (this.check("MINUS")) {
-      const op = this.advance();
-      const operand = this.parseUnary();
-      return {
-        type: "UnaryExpr",
-        operator: "-",
-        operand,
-        line: op.line,
-        column: op.column,
-      };
-    }
-    return this.parsePrimary();
-  }
-
-  private parsePrimary(): ExprNode {
-    const token = this.peek();
-
-    if (token.type === "NUMBER") {
-      this.advance();
-      return {
-        type: "Literal",
-        value: Number(token.value),
-        line: token.line,
-        column: token.column,
-      };
+        return {
+            type: "PrintStmt",
+            value,
+        };
     }
 
-    if (token.type === "STRING") {
-      this.advance();
-      return {
-        type: "Literal",
-        value: token.value,
-        line: token.line,
-        column: token.column,
-      };
+    private parseIf(): Stmt {
+        this.consume("LPAREN", "Expected '(' after agar");
+        const condition = this.parseExpression();
+        this.consume("RPAREN", "Expected ')' after condition");
+
+        const thenBranch = this.parseStatement();
+
+        let elseBranch: Stmt | undefined;
+
+        if (this.matchKeyword("nahi")) {
+            this.consumeKeyword("to", "Expected 'to' after 'nahi'");
+
+            if (this.matchKeyword("agar")) {
+                elseBranch = this.parseIf();
+            } else {
+                elseBranch = this.parseStatement();
+            }
+        }
+
+        return {
+            type: "IfStmt",
+            condition,
+            thenBranch,
+            elseBranch,
+        };
     }
 
-    if (token.type === "KEYWORD" && (token.value === "sach" || token.value === "jhoot")) {
-      this.advance();
-      return {
-        type: "Literal",
-        value: token.value === "sach",
-        line: token.line,
-        column: token.column,
-      };
+    private parseWhile(): Stmt {
+        this.consumeKeyword("tak", "Expected 'tak' after 'jab'");
+
+        this.consume("LPAREN", "Expected '(' after jab tak");
+        const condition = this.parseExpression();
+        this.consume("RPAREN", "Expected ')' after condition");
+
+        const body = this.parseStatement();
+
+        return {
+            type: "WhileStmt",
+            condition,
+            body,
+        };
     }
 
-    if (token.type === "KEYWORD" && token.value === "khaali") {
-      this.advance();
-      return {
-        type: "Literal",
-        value: null,
-        line: token.line,
-        column: token.column,
-      };
+    private parseBlock(): Stmt {
+        const body: Stmt[] = [];
+
+        while (!this.check("RBRACE") && !this.isAtEnd()) {
+            body.push(this.parseStatement());
+        }
+
+        this.consume("RBRACE", "Expected '}' after block");
+
+        return {
+            type: "BlockStmt",
+            body,
+        };
     }
 
-    if (token.type === "IDENTIFIER") {
-      this.advance();
-      return {
-        type: "Identifier",
-        name: token.value,
-        line: token.line,
-        column: token.column,
-      };
+    private parseBreak(): Stmt {
+        this.consume("SEMICOLON", "Expected ';' after bas");
+        return { type: "BreakStmt" };
     }
 
-    if (token.type === "LPAREN") {
-      this.advance();
-      const expr = this.parseExpr();
-      this.expect("RPAREN", "')' expected");
-      return expr;
+    private parseContinue(): Stmt {
+        this.consume("SEMICOLON", "Expected ';' after agla");
+        return { type: "ContinueStmt" };
     }
 
-    zabanError(`Expression expected, got ${token.type}`, token.line, token.column);
-  }
+    private parseExprStmt(): Stmt {
+        const expr = this.parseExpression();
 
-  private isStatementEnd(): boolean {
-    const t = this.peek();
-    if (
-      t.type === "SEMICOLON" ||
-      t.type === "RBRACE" ||
-      t.type === "RPAREN" ||
-      t.type === "COMMA" ||
-      t.type === "EOF"
-    ) {
-      return true;
+        this.consume("SEMICOLON", "Expected ';' after expression");
+
+        return {
+            type: "ExprStmt",
+            expr,
+        };
     }
-    if (t.type === "KEYWORD") {
-      const stmtKeywords = new Set([
-        "likho", "ye", "agar", "jab", "ghoomo", "bas", "agla", "warna",
-        "nahi", "khatam", "shuru", "hai", "to",
-      ]);
-      if (stmtKeywords.has(t.value)) return true;
+    private parseExpression(): Expr {
+        return this.parseAssignment();
     }
-    return false;
-  }
 
-  private skipSemicolons(): void {
-    while (this.check("SEMICOLON")) {
-      this.advance();
+    private parseAssignment(): Expr {
+        const expr = this.parseEquality();
+
+        if (this.match("ASSIGN", "PLUSEQ", "MINUSEQ", "STAREQ", "SLASHEQ")) {
+            const operator = this.previous().value;
+            const value = this.parseAssignment();
+
+            if (expr.type !== "Identifier") {
+                const token = this.previous();
+                zabanError("Invalid assignment target", token.line, token.column);
+            }
+
+            return {
+                type: "AssignExpr",
+                name: expr.name,
+                operator,
+                value,
+            };
+        }
+
+        return expr;
     }
-  }
 
-  private expect(type: Token["type"], message: string): Token {
-    const token = this.peek();
-    if (token.type !== type) {
-      zabanError(message, token.line, token.column);
+    private parseEquality(): Expr {
+        let expr = this.parseComparison();
+
+        while (this.match("EQ", "NEQ")) {
+            const operator = this.previous().value;
+            const right = this.parseComparison();
+
+            expr = {
+                type: "BinaryExpr",
+                operator,
+                left: expr,
+                right,
+            };
+        }
+
+        return expr;
     }
-    return this.advance();
-  }
 
-  private expectKeyword(kw: string, message: string): Token {
-    const token = this.peek();
-    if (token.type !== "KEYWORD" || token.value !== kw) {
-      zabanError(message, token.line, token.column);
+    private parseComparison(): Expr {
+        let expr = this.parseTerm();
+
+        while (this.match("LT", "GT", "LTE", "GTE")) {
+            const operator = this.previous().value;
+            const right = this.parseTerm();
+
+            expr = {
+                type: "BinaryExpr",
+                operator,
+                left: expr,
+                right,
+            };
+        }
+
+        return expr;
     }
-    return this.advance();
-  }
 
-  private check(type: TokenType): boolean {
-    return this.peek().type === type;
-  }
+    private parseTerm(): Expr {
+        let expr = this.parseFactor();
 
-  private checkKeyword(kw: string): boolean {
-    const t = this.peek();
-    return t.type === "KEYWORD" && t.value === kw;
-  }
+        while (this.match("PLUS", "MINUS")) {
+            const operator = this.previous().value;
+            const right = this.parseFactor();
 
-  private peek(): Token {
-    return this.tokens[this.pos]!;
-  }
+            expr = {
+                type: "BinaryExpr",
+                operator,
+                left: expr,
+                right,
+            };
+        }
 
-  private advance(): Token {
-    if (!this.isAtEnd()) this.pos++;
-    return this.tokens[this.pos - 1]!;
-  }
+        return expr;
+    }
 
-  private isAtEnd(): boolean {
-    return this.peek().type === "EOF";
-  }
+    private parseUnary(): Expr {
+        if (this.match("MINUS")) {
+            const operator = this.previous().value;
+            const right = this.parseUnary();
+
+            return {
+                type: "UnaryExpr",
+                operator,
+                right,
+            };
+        }
+
+        return this.parsePrimary();
+    }
+
+    private parseFactor(): Expr {
+        let expr = this.parseUnary();
+
+        while (this.match("STAR", "SLASH")) {
+            const operator = this.previous().value;
+            const right = this.parseUnary();
+
+            expr = {
+                type: "BinaryExpr",
+                operator,
+                left: expr,
+                right,
+            };
+        }
+
+        return expr;
+    }
+
+    private parsePrimary(): Expr {
+        if (this.match("NUMBER")) {
+            return {
+                type: "NumberLiteral",
+                value: Number(this.previous().value),
+            };
+        }
+
+        if (this.match("STRING")) {
+            return {
+                type: "StringLiteral",
+                value: this.previous().value,
+            };
+        }
+
+        if (this.match("IDENTIFIER")) {
+            return {
+                type: "Identifier",
+                name: this.previous().value,
+            };
+        }
+
+        if (this.matchKeyword("sach")) {
+            return {
+                type: "BooleanLiteral",
+                value: true,
+            };
+        }
+
+        if (this.matchKeyword("jhoot")) {
+            return {
+                type: "BooleanLiteral",
+                value: false,
+            };
+        }
+
+        if (this.matchKeyword("khaali")) {
+            return {
+                type: "NullLiteral",
+            };
+        }
+
+        if (this.match("LPAREN")) {
+            const expr = this.parseExpression();
+            this.consume("RPAREN", "Expected ')' after expression");
+            return expr;
+        }
+
+        const token = this.peek();
+        zabanError(`Unexpected token: ${token.value}`, token.line, token.column);
+    }
+
+    private match(...types: TokenType[]): boolean {
+        for (const type of types) {
+            if (this.check(type)) {
+                this.advance();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private matchKeyword(value: string): boolean {
+        if (this.checkKeyword(value)) {
+            this.advance();
+            return true;
+        }
+
+        return false;
+    }
+
+    private consume(type: TokenType, message: string): Token {
+        if (this.check(type)) return this.advance();
+
+        const token = this.peek();
+        zabanError(message, token.line, token.column);
+    }
+
+    private consumeKeyword(value: string, message: string): Token {
+        if (this.checkKeyword(value)) return this.advance();
+
+        const token = this.peek();
+        zabanError(message, token.line, token.column);
+    }
+
+    private check(type: TokenType): boolean {
+        return this.peek().type === type;
+    }
+
+    private checkKeyword(value: string): boolean {
+        const token = this.peek();
+        return token.type === "KEYWORD" && token.value === value;
+    }
+
+    private advance(): Token {
+        if (!this.isAtEnd()) this.current++;
+        return this.previous();
+    }
+
+    private isAtEnd(): boolean {
+        return this.peek().type === "EOF";
+    }
+
+    private peek(): Token {
+        return this.tokens[this.current]!;
+    }
+
+    private previous(): Token {
+        return this.tokens[this.current - 1]!;
+    }
 }
